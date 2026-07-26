@@ -3,6 +3,7 @@ import { GameProvider } from './context/GameContext';
 import Landing from './pages/Landing';
 import RoomPage from './pages/RoomPage';
 import Toast from './components/Toast';
+import Loader from './components/Loader';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toast />
+        <Loader />
       </div>
     </GameProvider>
   );

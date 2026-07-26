@@ -7,6 +7,7 @@ export function GameProvider({ children }) {
   const [state, setState] = useState(null);
   const [connected, setConnected] = useState(socket.connected);
   const [toast, setToast] = useState(null);
+  const [pending, setPending] = useState(0);
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('mafia:name') || '');
 
   useEffect(() => {
@@ -39,20 +40,29 @@ export function GameProvider({ children }) {
 
   const roomId = state?.roomId || null;
 
+  const withLoading = useCallback(async (promise) => {
+    setPending((n) => n + 1);
+    try {
+      return await promise;
+    } finally {
+      setPending((n) => n - 1);
+    }
+  }, []);
+
   const call = useCallback(
     async (event, payload = {}) => {
-      const res = await emitAsync(event, { roomId, ...payload });
+      const res = await withLoading(emitAsync(event, { roomId, ...payload }));
       if (res?.error) setToast({ type: 'error', text: res.error });
       return res;
     },
-    [roomId],
+    [roomId, withLoading],
   );
 
   const actions = useMemo(
     () => ({
-      createRoom: (name) => emitAsync('room:create', { name }),
-      joinRoom: (name, id) => emitAsync('room:join', { name, roomId: id }),
-      sync: (id) => emitAsync('room:sync', { roomId: id }),
+      createRoom: (name) => withLoading(emitAsync('room:create', { name })),
+      joinRoom: (name, id) => withLoading(emitAsync('room:join', { name, roomId: id })),
+      sync: (id) => withLoading(emitAsync('room:sync', { roomId: id })),
       addBots: (count) => call('lobby:addBots', { count }),
       removeBots: () => call('lobby:removeBots'),
       setReady: (ready) => call('lobby:ready', { ready }),
@@ -68,12 +78,12 @@ export function GameProvider({ children }) {
         setState(null);
       },
     }),
-    [call, roomId],
+    [call, roomId, withLoading],
   );
 
   const value = useMemo(
-    () => ({ state, connected, toast, setToast, playerName, rememberName, actions }),
-    [state, connected, toast, playerName, rememberName, actions],
+    () => ({ state, connected, toast, setToast, playerName, rememberName, actions, pending }),
+    [state, connected, toast, playerName, rememberName, actions, pending],
   );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
