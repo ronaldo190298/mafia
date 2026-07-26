@@ -9,7 +9,7 @@ import GameBoard from '../components/GameBoard';
 export default function RoomPage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { state, actions, connected, setToast } = useGame();
+  const { state, actions, connected, playerName, setToast } = useGame();
   const [checking, setChecking] = useState(!state);
 
   useEffect(() => {
@@ -18,9 +18,14 @@ export default function RoomPage() {
       return;
     }
     if (!connected) return;
+    if (!playerName) {
+      setToast({ type: 'error', text: 'Enter your name to join this room.' });
+      navigate(`/?room=${roomId}`, { replace: true });
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const res = await actions.sync(roomId);
+      const res = await actions.joinRoom(playerName, roomId);
       if (cancelled) return;
       if (res?.error) {
         setToast({ type: 'error', text: `${res.error} Rejoin with your name.` });
@@ -31,7 +36,7 @@ export default function RoomPage() {
     return () => {
       cancelled = true;
     };
-  }, [roomId, state?.roomId, connected, actions, navigate, setToast]);
+  }, [roomId, state?.roomId, connected, actions, navigate, setToast, playerName]);
 
   if (!connected && !state) {
     return <Centered text="Connecting to the game server..." />;

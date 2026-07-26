@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { emitAsync, socket } from '../lib/socket';
 
 const GameContext = createContext(null);
@@ -10,13 +10,21 @@ export function GameProvider({ children }) {
   const [pending, setPending] = useState(0);
   const [playerName, setPlayerName] = useState(() => localStorage.getItem('mafia:name') || '');
 
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+  const playerNameRef = useRef(playerName);
+  useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
+
   useEffect(() => {
     const onState = (payload) => setState(payload);
-    const onConnect = () => setConnected(true);
-    const onDisconnect = () => {
-      setConnected(false);
-      setState(null);
+    const onConnect = () => {
+      setConnected(true);
+      const currentState = stateRef.current;
+      if (currentState?.roomId && playerNameRef.current) {
+        emitAsync('room:join', { name: playerNameRef.current, roomId: currentState.roomId });
+      }
     };
+    const onDisconnect = () => setConnected(false);
     socket.on('room:state', onState);
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
